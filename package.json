@@ -12,8 +12,8 @@
   },
   "homepage": "https://github.com/lucianogalvao/turn-shift#readme",
   "bin": {
-    "turn-shift": "./bin/turn-shift.js",
-    "turn-shift-install": "./bin/turn-shift.js"
+    "turn-shift": "bin/turn-shift.js",
+    "turn-shift-install": "bin/turn-shift.js"
   },
   "files": [
     "bin",
