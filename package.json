@@ -1,6 +1,6 @@
 {
   "name": "@lucianogalvao/turn-shift",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Install Turn Shift skills for moving work between Codex and Claude sessions.",
   "type": "module",
   "repository": {

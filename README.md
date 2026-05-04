@@ -19,12 +19,6 @@ turn-shift install codex
 turn-shift install claude
 ```
 
-Use `--force` to replace an existing local skill install:
-
-```bash
-turn-shift install codex --force
-```
-
 ## Update
 
 After a new package version is published, update the installed local skills from the latest npm package:
@@ -40,14 +34,6 @@ If you use the global CLI, update the global package first, then update the loca
 npm install -g @lucianogalvao/turn-shift@latest
 turn-shift update codex
 turn-shift update claude
-```
-
-`update` replaces the installed local skill. It is equivalent to running `install --force`, but makes the intent explicit.
-
-The package also exposes `turn-shift-install` and `turn-shift-update` aliases for direct install or update calls:
-
-```bash
-turn-shift-update codex
 ```
 
 ## What Gets Installed
