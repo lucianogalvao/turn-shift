@@ -7,14 +7,14 @@ Turn Shift installs local agent skills that let Codex and Claude recover recent 
 Use the package directly:
 
 ```bash
-npx @lucianogalvao/turn-shift install codex
-npx @lucianogalvao/turn-shift install claude
+npx @lucianogalvao/turn-shift@latest install codex
+npx @lucianogalvao/turn-shift@latest install claude
 ```
 
 Or install the CLI globally:
 
 ```bash
-npm install -g @lucianogalvao/turn-shift
+npm install -g @lucianogalvao/turn-shift@latest
 turn-shift install codex
 turn-shift install claude
 ```
@@ -23,6 +23,31 @@ Use `--force` to replace an existing local skill install:
 
 ```bash
 turn-shift install codex --force
+```
+
+## Update
+
+After a new package version is published, update the installed local skills from the latest npm package:
+
+```bash
+npx @lucianogalvao/turn-shift@latest update codex
+npx @lucianogalvao/turn-shift@latest update claude
+```
+
+If you use the global CLI, update the global package first, then update the local skill install:
+
+```bash
+npm install -g @lucianogalvao/turn-shift@latest
+turn-shift update codex
+turn-shift update claude
+```
+
+`update` replaces the installed local skill. It is equivalent to running `install --force`, but makes the intent explicit.
+
+The package also exposes `turn-shift-install` and `turn-shift-update` aliases for direct install or update calls:
+
+```bash
+turn-shift-update codex
 ```
 
 ## What Gets Installed
@@ -48,6 +73,8 @@ In Codex, mention the installed skill with `$turn-shift` to read Claude Code ses
 ```text
 $turn-shift claude
 $turn-shift claude -m "message text"
+$turn-shift claude <session-hash>
+$turn-shift claude --session <session-hash>
 ```
 
 In Claude, use the installed skill to read Codex sessions:
@@ -55,9 +82,18 @@ In Claude, use the installed skill to read Codex sessions:
 ```text
 /turn-shift codex
 /turn-shift codex -m "message text"
+/turn-shift codex <session-hash>
+/turn-shift codex --session <session-hash>
 ```
 
-When multiple sessions match a message search, Turn Shift lists up to three candidates. Run again with `--session <hash>` to load a specific session.
+When multiple sessions match a message search, Turn Shift lists up to three candidates with a title, summary, session hash, source, and match excerpt. After that list appears, run again with the candidate number to load that result:
+
+```text
+$turn-shift 1
+/turn-shift 1
+```
+
+You can also load a specific session directly with the provider plus session hash, or provider plus `--session <hash>`.
 
 ## Development
 

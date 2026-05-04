@@ -18,6 +18,7 @@ SUMMARY_LIMIT = 250
 MAX_TEXT_FIELD = 20000
 MATCH_LIMIT = 3
 MATCH_CONTEXT = 80
+DEFAULT_PROVIDER = "codex"
 
 
 @dataclass(frozen=True)
@@ -302,39 +303,127 @@ def render_matches(provider: str, query: str, matches: list[SessionMatch]) -> st
     for index, match in enumerate(matches, start=1):
         timestamp = datetime.fromtimestamp(match.session.mtime).strftime("%Y-%m-%d %H:%M")
         title = title_from_turns(match.turns, match.session.session_id)
+        summary = summary_from_turns(match.turns)
         lines.extend(
             [
                 f"{index}. [{timestamp}] {title}",
+                f"   Summary: {summary}",
                 f"   Session: {match.session.session_id}",
                 f"   Source: `{match.session.path}`",
                 f"   Match: \"{match.excerpt}\"",
                 "",
             ]
         )
-    lines.extend(["Run again with `--session <hash>` to load one of these sessions.", ""])
+    lines.extend([f"Run again with `1`, `{provider} <session hash>`, or `{provider} --session <hash>` to load one of these sessions.", ""])
     return "\n".join(lines)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extract latest LLM session for turn shift.")
-    parser.add_argument("provider", help="Source provider. Currently supported: codex")
+    parser.add_argument("target", help="Source provider or session number. Currently supported provider: codex")
+    parser.add_argument("selector", nargs="?", help="Session hash to load for the selected provider")
     parser.add_argument("--cwd", default=os.getcwd(), help="Project directory used to prefer matching sessions")
     parser.add_argument("--session", help="Specific session hash to load instead of the latest")
     parser.add_argument("-m", "--message", help="Search sessions for this message text before loading")
     return parser.parse_args(argv)
 
 
+def last_matches_path(provider: str) -> Path:
+    return Path.home() / ".turn-shift" / f"last-{provider}-matches.json"
+
+
+def save_last_matches(provider: str, cwd: Path | None, matches: list[SessionMatch]) -> None:
+    payload = {
+        "provider": provider,
+        "cwd": str(cwd) if cwd else None,
+        "matches": [
+            {
+                "session_id": match.session.session_id,
+                "path": str(match.session.path),
+            }
+            for match in matches
+        ],
+    }
+    path = last_matches_path(provider)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def load_last_matches(provider: str) -> list[Session]:
+    path = last_matches_path(provider)
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(payload, dict) or payload.get("provider") != provider:
+        return []
+
+    sessions: list[Session] = []
+    for item in payload.get("matches", []):
+        if not isinstance(item, dict):
+            continue
+        session_path = Path(str(item.get("path") or ""))
+        session_id = str(item.get("session_id") or session_path.stem)
+        try:
+            sessions.append(
+                Session(
+                    path=session_path,
+                    session_id=session_id,
+                    mtime=session_path.stat().st_mtime,
+                    cwd=None,
+                    timestamp=None,
+                )
+            )
+        except OSError:
+            continue
+    return sessions
+
+
+def find_session_by_id(sessions: list[Session], selector: str) -> Session | None:
+    exact = [session for session in sessions if session.session_id == selector]
+    if exact:
+        return exact[0]
+
+    prefix = [session for session in sessions if session.session_id.startswith(selector)]
+    if len(prefix) == 1:
+        return prefix[0]
+    return None
+
+
+def session_from_selection(provider: str, selector: str, sessions: list[Session]) -> Session | None:
+    if re.fullmatch(r"\d+", selector):
+        saved = load_last_matches(provider)
+        index = int(selector) - 1
+        if 0 <= index < len(saved):
+            return saved[index]
+        return None
+
+    return find_session_by_id(sessions, selector) or find_session_by_id(load_last_matches(provider), selector)
+
+
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    provider = args.provider.lower().strip()
-    if provider != "codex":
+    target = args.target.strip()
+    provider = target.lower()
+    selector: str | None = args.session or args.selector
+
+    if re.fullmatch(r"\d+", target) or args.session:
+        provider = DEFAULT_PROVIDER
+        selector = args.session or target
+    elif provider == DEFAULT_PROVIDER:
+        selector = args.selector
+    else:
         print("Unsupported provider. Only `codex` is supported for now.", file=sys.stderr)
         return 2
 
     cwd = Path(args.cwd).expanduser() if args.cwd else None
     sessions = find_codex_sessions(cwd)
-    if args.session:
-        sessions = [session for session in sessions if session.session_id == args.session]
+    if selector:
+        session = session_from_selection(provider, selector, sessions)
+        sessions = [session] if session else []
 
     if not sessions:
         scope = f" for cwd `{cwd}`" if cwd else ""
@@ -352,6 +441,7 @@ def main(argv: list[str]) -> int:
             print(render(match.session, match.turns))
             return 0
 
+        save_last_matches(provider, cwd, matches)
         print(render_matches(provider, args.message, matches))
         return 0
 

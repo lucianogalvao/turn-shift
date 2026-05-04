@@ -1,19 +1,25 @@
 #!/usr/bin/env node
 
+import path from "node:path";
+
 import { installSkill } from "../lib/install.js";
 
 const usage = `Usage:
   turn-shift install <codex|claude> [--force]
+  turn-shift update <codex|claude>
   turn-shift-install <codex|claude> [--force]
+  turn-shift-update <codex|claude>
 
-Installs the Turn Shift skill for the selected agent.`;
+Installs or updates the Turn Shift skill for the selected agent.`;
 
 async function main(argv) {
   const args = [...argv];
-  const command = args[0] === "install" ? args.shift() : "install";
+  const executable = path.basename(process.argv[1] || "");
+  const defaultCommand = executable === "turn-shift-update" ? "update" : "install";
+  const command = ["install", "update"].includes(args[0]) ? args.shift() : defaultCommand;
   const forceIndex = args.indexOf("--force");
-  const force = forceIndex !== -1;
-  if (force) {
+  const force = command === "update" || forceIndex !== -1;
+  if (forceIndex !== -1) {
     args.splice(forceIndex, 1);
   }
 
@@ -22,13 +28,14 @@ async function main(argv) {
     return 0;
   }
 
-  if (command !== "install" || args.length !== 1) {
+  if (!["install", "update"].includes(command) || args.length !== 1) {
     console.error(usage);
     return 2;
   }
 
   const result = await installSkill({ agent: args[0], force });
-  console.log(`Installed turn-shift for ${result.agent}: ${result.target}`);
+  const verb = command === "update" ? "Updated" : "Installed";
+  console.log(`${verb} turn-shift for ${result.agent}: ${result.target}`);
   for (const file of result.files) {
     console.log(`- ${file}`);
   }
