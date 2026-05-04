@@ -43,11 +43,11 @@ The npm package does not use `postinstall` and does not modify agent directories
 
 ## Usage
 
-In Codex, use the installed skill to read Claude Code sessions:
+In Codex, mention the installed skill with `$turn-shift` to read Claude Code sessions:
 
 ```text
-/turn-shift claude
-/turn-shift claude -m "message text"
+$turn-shift claude
+$turn-shift claude -m "message text"
 ```
 
 In Claude, use the installed skill to read Codex sessions:
